@@ -1,0 +1,5 @@
+ip_data/
+saved_model/
+prediction/
+yolo_config/datasets/
+yolo_config/weights/
