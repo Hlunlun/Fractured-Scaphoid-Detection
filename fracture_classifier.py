@@ -3,6 +3,7 @@ import cv2
 import torch
 import argparse
 import torch.nn as nn
+import numpy as np
 from datetime import datetime
 import torch.optim as optim
 from tqdm import tqdm
@@ -123,7 +124,8 @@ class FractureClassifier:
             'recalls': recall_score,
             'precisions': precision_score,
             'f1s': f1_score, 
-            'cls': lambda pred,_: pred,            
+            'cls': lambda pred,_: pred,
+            'tgt': lambda _, tgt: tgt,            
         }                
         results = [{name: func(preds_np, tgts_np) for name, func in metric_functions.items()}] 
         results[0]['losses'] = self.criterion(preds, tgts).item()
@@ -139,11 +141,11 @@ class FractureClassifier:
         """
         Plot Loss, Accuracy, IoU, Accuracy, Recall, Precision, F1
         """          
-        self._plt(self.train_metrics, 'train_metrics', 'Classifier model: Evaluating During Training')
-        self._plt(self.test_metrics, 'test_metrics', 'Classifier model: Testing')
+        self._plot(self.train_metrics, 'train_metrics', 'Classifier model: Evaluating During Training')
+        self._plot(self.test_metrics, 'test_metrics', 'Classifier model: Testing')
 
 
-    def _plt(self, metrics, img_name, title):
+    def _plot(self, metrics, img_name, title):
         plt.figure()
         df = pd.DataFrame(metrics)
         plt.title(title)
@@ -168,7 +170,8 @@ class FractureClassifier:
         metrics = self._run(model, dataset)
         
         infos_loader = DataLoader(dataset.datas['fracture'], batch_size=self.test_batch_size, shuffle=False)
-        preds = [metric['cls'] for metric in metrics]
+        preds = [met['cls'] for met in metrics]
+        
         
         for infos, preds in zip(infos_loader, preds):
             for name, path, pred in zip(infos['name'], infos['img'], preds):                             
@@ -180,8 +183,29 @@ class FractureClassifier:
                     os.makedirs(os.path.dirname(output_path), exist_ok=True)
                     cv2.imwrite(output_path, cv2.imread(path))
 
+        
         print(len(os.listdir("prediction/classifier")))
         print(len(os.listdir("prediction/scaphoid")))
+
+       
+        del model
+        torch.cuda.empty_cache()
+
+
+        preds = []
+        tgts = []
+        for metric in metrics:
+            preds.extend(metric['cls'])  # Use extend instead of +=
+            tgts.extend(metric['tgt'])    
+        tgts = np.array(tgts).astype(int)
+        preds = np.array(preds).astype(int)
+        statics = {
+            'accus': accuracy_score(tgts, preds),
+            'recalls': recall_score(tgts, preds),
+            'precisions': precision_score(tgts, preds),
+            'f1s': f1_score(tgts, preds),
+        }
+        return statics
         
 
 

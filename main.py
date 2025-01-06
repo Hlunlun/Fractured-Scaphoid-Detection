@@ -25,7 +25,7 @@ def argparse_args():
     parser.add_argument('--frac-dir', type=str, default="ip_data/fracture_detection/annotations")
     parser.add_argument('--train-batch-size', type=int, default=8)
     parser.add_argument('--test-batch-size', type=int, default=8)
-    parser.add_argument('--device', type=str, default="cuda:0")
+    parser.add_argument('--device', type=str, default="cuda:1")
     parser.add_argument('--test-ratio', type=float, default=0.2)
     parser.add_argument('--random-state', type=float, default=42)
     parser.add_argument('--num_epochs', type=int, default=100)
@@ -52,23 +52,22 @@ def reset_dirs(args):
         os.makedirs('prediction/hand', exist_ok=True)
 
 def system_init(args):  
-    scap_detector = ScaphoidDetector(args)
-    frac_classifier = FractureClassifier(args)
-    hand_detector = HandDetector(args)
     
-    if args.train == 1:
+    if args.train == 1:   
+        scap_detector = ScaphoidDetector(args)
+        frac_classifier = FractureClassifier(args)
+        hand_detector = HandDetector(args)    
         scap_detector.train()
-        frac_classifier.train()
-        hand_detector.train()
+        # frac_classifier.train()
+        # hand_detector.train()
     else:
-        scap_detector.detect()
-        frac_classifier.classify()
-        hand_detector.detect_fracture()
-        hand_detector.detect_hand()
-        # app = QApplication(sys.argv)
-        # window = MainWindow(detector)
-        # window.show()
-        # sys.exit(app.exec_())
+        scap_detector = ScaphoidDetector(args)
+        frac_classifier = FractureClassifier(args)
+        hand_detector = HandDetector(train=False, args=args) 
+        app = QApplication(sys.argv)
+        window = MainWindow(scap_detector, frac_classifier, hand_detector)
+        window.show()
+        sys.exit(app.exec_())
 
 def main():
     args = argparse_args()

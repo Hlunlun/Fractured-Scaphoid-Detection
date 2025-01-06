@@ -51,7 +51,7 @@ def create_fracture_data(dataset, dst_dir, split='train'):
             os.makedirs(out_dir, exist_ok=True)
             shutil.copy(data['img'], out_dir)
 
-            img_path = f'../fracture/images/{split}/{data['name']}'
+            img_path = f'../fracture/images/{split}/{data["name"]}'
             paths.append(img_path)
 
 
@@ -59,7 +59,7 @@ def create_fracture_data(dataset, dst_dir, split='train'):
             with Image.open(data['img']) as img:
                 img_width, img_height = img.size
 
-            label_path = os.path.join(dst_dir, 'labels', split, f'{data['name'].replace('.jpg', '')}.txt')
+            label_path = os.path.join(dst_dir, 'labels', split, f"{data['name'].replace('.jpg', '')}.txt")
             os.makedirs(os.path.dirname(label_path), exist_ok=True)
 
             write_labels([(0, data['cor'])], label_path, img_width, img_height)
@@ -120,7 +120,7 @@ def create_hand_data(dataset, dst_dir, split='train'):
         os.makedirs(out_dir, exist_ok=True)
         shutil.copy(data['path'], out_dir)
 
-        img_path = f'../hand/images/{split}/{data['name']}'
+        img_path = f"../hand/images/{split}/{data['name']}"
         paths.append(img_path)
 
 
@@ -128,7 +128,7 @@ def create_hand_data(dataset, dst_dir, split='train'):
         with Image.open(data['path']) as img:
             img_width, img_height = img.size
 
-        label_path = os.path.join(dst_dir, 'labels', split, f'{data['name'].replace('.jpg', '')}.txt')
+        label_path = os.path.join(dst_dir, 'labels', split, f"{data['name'].replace('.jpg', '')}.txt")
         os.makedirs(os.path.dirname(label_path), exist_ok=True)
 
         labels_with_coords = []
@@ -145,21 +145,7 @@ def create_hand_data(dataset, dst_dir, split='train'):
 
 
 
-fracture_datas = load_json('fracture')
-train_dataset, val_dataset = train_test_split(fracture_datas , test_size=0.2, random_state=42)
-# dst_dir = '/home/lun/projects/yolov11-obb/datasets/hand'
-dst_dir = 'yolo_config/datasets/fracture'
-create_fracture_data(train_dataset, dst_dir, 'train')
-create_fracture_data(val_dataset, dst_dir, 'val')
 
-
-
-datas = collate_hand_data(load_json())
-train_dataset, val_dataset = train_test_split(datas, test_size=0.2, random_state=42)
-# dst_dir = '/home/lun/projects/yolov11-obb/datasets/hand'
-dst_dir = 'yolo_config/datasets/hand'
-create_hand_data(train_dataset, dst_dir, 'train')
-create_hand_data(val_dataset, dst_dir, 'val')
 
 
 

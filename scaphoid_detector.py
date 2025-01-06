@@ -23,6 +23,7 @@ class ScaphoidDetector():
         self.test_ratio = args.test_ratio
         self.random_state = args.random_state
         self.lr = args.lr
+        self.losses = []
 
         
         # 2. Set parameters  
@@ -55,6 +56,7 @@ class ScaphoidDetector():
             self.train_scap_metrics += self._run(self.scap_model, train_dataset, epoch, 'scaphoid', self.scap_optim) 
         self.test_scap_metrics = self._run(self.scap_model, test_dataset, 0)
 
+        self.plot()
 
     def create_model(self):
         # load a model pre-trained on COCO        
@@ -94,6 +96,7 @@ class ScaphoidDetector():
                 model.train()
                 loss_dict = model(imgs, tgts)
                 losses = sum(loss for loss in loss_dict.values())
+                self.losses.append(losses.item())
                 optim.zero_grad()
                 losses.backward()
                 optim.step()
@@ -118,8 +121,6 @@ class ScaphoidDetector():
 
         return metrics
     
-
-    
     def collate_fn(self, batch):
         imgs = [sample[0].to(self.device) for sample in batch]
         tgts = [{k:v.to(self.device) for k, v in sample[1].items()} for sample in batch]        
@@ -128,11 +129,10 @@ class ScaphoidDetector():
     def cal_metric(self, preds, tgts):
         metric_functions = {
             'ious': lambda pred, tgt: self.cal_iou(pred,tgt)['best_iou'],
-            'boxes': lambda pred, tgt: self.cal_iou(pred,tgt)['best_box'],
+            'boxes': lambda pred, tgt: self.cal_iou(pred,tgt)['best_box']
         }        
         # Calculate metrics using the mapping
         results = [{name: func(pred, tgt) for name, func in metric_functions.items()} for pred, tgt in zip(preds, tgts) ]
-                
         return results
     
 
@@ -191,11 +191,15 @@ class ScaphoidDetector():
         Plot Loss, Accuracy, IoU, Accuracy, Recall, Precision, F1
         """          
 
-        self._plt(self.train_scap_metrics, 'train_scap_metrics', 'Scaphoid model: Evaluating During Training')
-        self._plt(self.test_scap_metrics, 'test_scap_metrics', 'Scaphoid model: Testing')
+        self._plot(self.train_scap_metrics, 'train_scap_metrics', 'Scaphoid model: Evaluating During Training')
+        self._plot(self.test_scap_metrics, 'test_scap_metrics', 'Scaphoid model: Testing')
+
+        plt.plot(self.losses) 
+        plt.title("Scaphoid model: Loss")
+        plt.savefig(os.path.join(self.re_dir, f'train_scap_loss.jpg')) 
 
 
-    def _plt(self, metrics, img_name, title):
+    def _plot(self, metrics, img_name, title):
         plt.figure()
         df = pd.DataFrame(metrics)
         plt.title(title)
@@ -223,11 +227,13 @@ class ScaphoidDetector():
         # Data list
         infos = [[item['name'], item['img']] for item in scap_dataset.datas['scaphoid']]
         pred_boxes = [metric['boxes'] for metric in scap_metrics]
+        ious = [metric['ious'] for metric in scap_metrics]
         tgt_boxes = [scap_dataset.__getitem__(i)[1]['boxes'].squeeze().detach().numpy() for i in range(len(scap_dataset))]
 
+        results = []
         # Mark Scaphoid in images
-        for idx, (info, pred_box, tgt_box) in enumerate(
-            zip(infos, pred_boxes, tgt_boxes)
+        for idx, (info, pred_box, tgt_box, iou) in enumerate(
+            zip(infos, pred_boxes, tgt_boxes, ious)
         ):
             
             img = cv2.imread(info[1])
@@ -256,6 +262,13 @@ class ScaphoidDetector():
             output_path = os.path.join(f"prediction/scaphoid/{info[0]}")
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             cv2.imwrite(output_path, img_arr_scap)   
+
+            results.append({'img_name': info[0], 'iou': iou})
+       
+        del scap_model
+        torch.cuda.empty_cache()
+        return results
+
 
 
     
